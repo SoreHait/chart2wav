@@ -2,10 +2,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <malloc.h>
+#include <libgen.h>
 
 
-short mixFunc(int x, int y) {
+short validateShort(int x, int y) {
     int sum = x + y;
     if (sum > 32767) {
         return 32767;
@@ -28,7 +28,7 @@ float bits2time(int bitCount) {
 }
 
 char* strreverse(char* text) {
-    unsigned int len = strlen(text);
+    size_t len = strlen(text);
     int i, n;
     char test;
     char* rev = (char*)malloc(len * sizeof(char));
@@ -41,40 +41,74 @@ char* strreverse(char* text) {
 }
 
 char* getMiddleText(char* text, char* beginWith, char* endWith) {
-    char* src = text;
-    char* p1, * p2;
-    p1 = strstr(src, beginWith);
-    p2 = strstr(src, endWith);
-    char* dest = (char*)malloc((p2 - p1) * sizeof(char));
-
-    if (p1 == NULL || p2 == NULL) {
-        return("");
-    }
-    else if (p1 > p2) {
-        //TODO: 取"12345612"中"34" 和 第二个"12"中间的数
-        return("");
-
-    }
-    else {
-        p1 += strlen(beginWith);
-        memcpy(dest, p1, p2 - p1);
-        dest[strlen(dest)] = '\0';
-    }
-    return(dest);
+    char* l_pos, * r_pos;
+    size_t beginLength = strlen(beginWith);
+    l_pos = strstr(text, beginWith) + beginLength;
+    r_pos = strstr(text, endWith);
+    long offset = r_pos - l_pos;
+    char* retStr = (char*)malloc(offset);
+    strncpy(retStr, l_pos, offset);
+    return retStr;
 }
 
-MIXERDATA* analyzeAff(char* affContent) {
+MIXERDATA* analyzeAff(void* affContent, size_t contentLength, size_t* output_mixerDataLength) {
     // TODO
 }
 
-int* mixKeysound(MIXERDATA* mixerData) {
+char* mixKeysound(MIXERDATA* mixerData, size_t mixerDataLength) {
     // TODO
 }
 
-void* packWav(int* data) {
+void* packWav(char* data) {
     // TODO
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    // Check argc
+    if (argc < 3) {
+        printf("Not enough args.");
+        return 1;
+    }
+
+    // Validate .aff
+    char* affFile = argv[1];
+    char* affFileName = basename(affFile);
+    if (strstr(affFileName, ".aff") == NULL || strcmp(strstr(affFileName, ".aff"), ".aff") != 0) {
+        printf("Not aff file.");
+        return 1;
+    }
+
+    // Generate output path
+    char* outputFileName = argv[2];
+    strcat(outputFileName, ".wav");
+    char* outputFile = dirname(affFile);
+    strcat(outputFile, "/");
+    strcat(outputFile, outputFileName);
+
+    // Load aff
+    FILE* afffp = fopen(affFile, "r");
+    size_t mallocSize = 100;
+    void* affContent = malloc(mallocSize);
+    size_t byteCount = fread(affContent, 1, mallocSize, afffp);
+    while (byteCount == mallocSize) { // File not done reading
+        rewind(afffp);
+        free(affContent);
+        mallocSize += 100;
+        affContent = malloc(mallocSize);
+        byteCount = fread(affContent, 1, mallocSize, afffp);
+    }
+
+    // Analyze aff
+    size_t mixerDataLength = 0;
+    size_t* mixerDataLength_ptr = &mixerDataLength;
+    MIXERDATA* mixerData = analyzeAff(affContent, byteCount, mixerDataLength_ptr);
+
+    // Mix keysound
+    char* keysoundData = mixKeysound(mixerData, mixerDataLength);
+
+    // Pack .wav
+    void* wavData = packWav(keysoundData);
+
+    // Output .wav
     // TODO
 }
