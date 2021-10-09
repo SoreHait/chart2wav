@@ -2,7 +2,7 @@
 #define AFF2WAV_C_MAIN_H
 
 typedef struct {
-    int timing;
+    long timing;
     int type;
 } MIXERDATA;
 
