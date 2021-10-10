@@ -5,7 +5,7 @@
 #include <libgen.h>
 
 
-short validateShort(int x, int y) {
+short validateShort(short x, short y) {
     int sum = x + y;
     if (sum > 32767) {
         return 32767;
@@ -25,6 +25,30 @@ short makeWord(unsigned char low, unsigned char high) {
 
 float bits2time(int bitCount) {
     return ((float)bitCount) / 88200;
+}
+
+const unsigned char* getData(int dataType) {
+    if (dataType) {
+        return AUDIOARC;
+    }
+    else {
+        return AUDIOTAP;
+    }
+}
+
+int getDataLen(int dataType) {
+    if (dataType) {
+        return AUDIOARC_LEN;
+    }
+    else {
+        return AUDIOTAP_LEN;
+    }
+}
+
+int getTiming(const void* a, const void* b) {
+    long aTiming = ((MIXERDATA*)a) -> timing;
+    long bTiming = ((MIXERDATA*)b) -> timing;
+    return (int)(aTiming - bTiming);
 }
 
 char* strreverse(char* text) {
@@ -119,7 +143,44 @@ MIXERDATA* analyzeAff(void* affContent, size_t contentLength, size_t* output_mix
 }
 
 char* mixKeysound(MIXERDATA* mixerData, size_t mixerDataLength) {
-    // TODO
+    float mixTimeLen;
+    if (mixerDataLength == 0) {
+        mixTimeLen = 0;
+    }
+    else {
+        qsort(mixerData, mixerDataLength, sizeof(MIXERDATA), getTiming);
+        long min = mixerData[0].timing;
+        for (int i = 0; i < mixerDataLength; i++) {
+            mixerData[i].timing -= min;
+        }
+        mixTimeLen = (float)(mixerData[mixerDataLength - 1].timing) / 1000 + bits2time(getDataLen(mixerData[mixerDataLength - 1].type));
+    }
+    printf("Audio Time: %f sec.", mixTimeLen);
+
+    int mixSampleCount = (int)(mixTimeLen * 44100);
+    printf("Sample Count: %d.", mixSampleCount);
+
+    // Mix keysound
+    short mixBuffer[mixSampleCount];
+    memset(mixBuffer, 0, sizeof(short) * mixSampleCount);
+    for (int i = 0; i < mixerDataLength; i++) {
+        MIXERDATA currentMixerData = mixerData[i];
+        int mixSamplePos = (int)((double)(currentMixerData.timing) * 44.1);
+        int dataLen = getDataLen(currentMixerData.type);
+        unsigned char* data = (unsigned char*)malloc(dataLen);
+        memcpy(data, getData(currentMixerData.type), dataLen);
+        for (int j = 0; j < dataLen; j += 2) {
+            mixSamplePos++;
+            if (mixSamplePos >= mixSampleCount) {
+                break;
+            }
+            mixBuffer[mixSamplePos] = validateShort(mixBuffer[mixSamplePos], makeWord(data[j], data[j + 1]));
+        }
+        free(data);
+    }
+    char* outputBuffer = (char*)malloc(mixSampleCount * 2);
+    memcpy(outputBuffer, mixBuffer, mixSampleCount * 2);
+    return outputBuffer;
 }
 
 void* packWav(char* data) {
@@ -164,6 +225,7 @@ int main(int argc, char* argv[]) {
         affContent = malloc(mallocSize);
         byteCount = fread(affContent, 1, mallocSize, afffp);
     }
+    fclose(afffp);
 
     // Analyze aff
     size_t mixerDataLength = 0;
