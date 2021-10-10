@@ -51,19 +51,6 @@ int getTiming(const void* a, const void* b) {
     return (int)(aTiming - bTiming);
 }
 
-char* strreverse(char* text) {
-    size_t len = strlen(text);
-    int i, n;
-    char test;
-    char* rev = (char*)malloc(len * sizeof(char));
-    for (i = (int)len - 1, n = 0; i >= 0; i--, n++) {
-        test = text[i];
-        rev[n] = test;
-    }
-    rev[len] = '\0';
-    return rev;
-}
-
 char* getMiddleText(char* text, char* beginWith, char* endWith) {
     char* l_pos, * r_pos;
     size_t beginLength = strlen(beginWith);
@@ -75,13 +62,13 @@ char* getMiddleText(char* text, char* beginWith, char* endWith) {
     return retStr;
 }
 
-MIXERDATA* analyzeAff(void* affContent, size_t contentLength, size_t* output_mixerDataLength) {
+MIXERDATA* analyzeAff(const char* affContent, size_t contentLength, size_t* output_mixerDataLength) {
     // Get number of lines and max char count of all lines
     // Q: why initial value of lineCount is 1? A: number of '\n's is always lineCount - 1.
     int lineCount = 1, maxCharCount = 0, charCount = 0;
     for (int i = 0; i < contentLength; i++) {
         charCount++;
-        char currentChar = *((char*)affContent + i);
+        char currentChar = affContent[i];
         if (currentChar == '\n') {
             lineCount++;
             if (charCount > maxCharCount) {
@@ -92,16 +79,10 @@ MIXERDATA* analyzeAff(void* affContent, size_t contentLength, size_t* output_mix
     }
 
     // Declare a char array to store each line
-    char lineContent[lineCount][maxCharCount + 1]; // maxCharCount + 1 for safety reasons (ex. '\0')
+    char lineContent[lineCount][maxCharCount];
 
     // Split each line and store
-    char* token;
-    int lineIndex = 0;
-    token = strtok((char*)affContent, "\n");
-    while (token != NULL) {
-        strcpy(lineContent[lineIndex], token);
-        token = strtok(NULL, (char*)affContent);
-    }
+    //TODO
 
     // Extract objects
     MIXERDATA* mixerDataTmp = (MIXERDATA*)malloc(sizeof(MIXERDATA) * lineCount * 2); // maybe long enough
@@ -116,7 +97,7 @@ MIXERDATA* analyzeAff(void* affContent, size_t contentLength, size_t* output_mix
             }
             if (strstr(currentLine, "arctap") != NULL) { // is arctap
                 char* arctapStr = getMiddleText(currentLine, "[", "]");
-                token = strtok(arctapStr, ",");
+                char* token = strtok(arctapStr, ",");
                 while (token != NULL) {
                     (mixerDataTmp + *output_mixerDataLength) -> timing = strtol(getMiddleText(token, "(", ")"), NULL, 10);
                     (mixerDataTmp + *output_mixerDataLength) -> type = 1;
@@ -142,7 +123,7 @@ MIXERDATA* analyzeAff(void* affContent, size_t contentLength, size_t* output_mix
     return mixerData;
 }
 
-char* mixKeysound(MIXERDATA* mixerData, size_t mixerDataLength) {
+unsigned char* mixKeysound(MIXERDATA* mixerData, size_t mixerDataLength, size_t* output_keysoundDataLength) {
     float mixTimeLen;
     if (mixerDataLength == 0) {
         mixTimeLen = 0;
@@ -155,10 +136,10 @@ char* mixKeysound(MIXERDATA* mixerData, size_t mixerDataLength) {
         }
         mixTimeLen = (float)(mixerData[mixerDataLength - 1].timing) / 1000 + bits2time(getDataLen(mixerData[mixerDataLength - 1].type));
     }
-    printf("Audio Time: %f sec.", mixTimeLen);
+    printf("Audio Time: %f sec.\n", mixTimeLen);
 
     int mixSampleCount = (int)(mixTimeLen * 44100);
-    printf("Sample Count: %d.", mixSampleCount);
+    printf("Sample Count: %d.\n", mixSampleCount);
 
     // Mix keysound
     short mixBuffer[mixSampleCount];
@@ -178,19 +159,32 @@ char* mixKeysound(MIXERDATA* mixerData, size_t mixerDataLength) {
         }
         free(data);
     }
-    char* outputBuffer = (char*)malloc(mixSampleCount * 2);
-    memcpy(outputBuffer, mixBuffer, mixSampleCount * 2);
+    *output_keysoundDataLength = mixSampleCount * 2;
+    unsigned char* outputBuffer = (unsigned char*)malloc(*output_keysoundDataLength);
+    memcpy(outputBuffer, mixBuffer, *output_keysoundDataLength);
     return outputBuffer;
 }
 
-void* packWav(char* data) {
-    // TODO
+void* packWav(unsigned char* keysoundData, size_t keysoundDataLength, size_t* output_wavDataLength) {
+    unsigned char wavHeader[WAVHEADER_LEN];
+    memcpy(wavHeader, WAVHEADER, WAVHEADER_LEN);
+    *output_wavDataLength = keysoundDataLength + 36;
+
+    for (int i = 0; i < 4; i++) {
+        wavHeader[i + 4] = (unsigned char)(((*output_wavDataLength) >> (i * 8)) & 0xFF);
+        wavHeader[i + 40] = (unsigned char)(((keysoundDataLength) >> (i * 8)) & 0xFF);
+    }
+
+    void* output_wav = malloc(WAVHEADER_LEN + keysoundDataLength);
+    memcpy(output_wav, wavHeader, WAVHEADER_LEN);
+    memcpy(output_wav + WAVHEADER_LEN, keysoundData, keysoundDataLength);
+    return output_wav;
 }
 
 int main(int argc, char* argv[]) {
     // Check argc
     if (argc < 3) {
-        printf("Not enough args.");
+        printf("Not enough args.\n");
         return 1;
     }
 
@@ -198,32 +192,35 @@ int main(int argc, char* argv[]) {
     char* affFile = argv[1];
     char* affFileName = basename(affFile);
     if (strstr(affFileName, ".aff") == NULL || strcmp(strstr(affFileName, ".aff"), ".aff") != 0) {
-        printf("Not aff file.");
+        printf("Not aff file.\n");
         return 1;
     }
 
     // Generate output path
+    char* outputFilePath = dirname(affFile);
     char* outputFileName = argv[2];
-    strcat(outputFileName, ".wav");
-    char* outputFile = dirname(affFile);
+    size_t outFileStrLen = strlen(outputFilePath) + strlen(outputFileName) + 2; //+2 for '\0' and '/'
+    char outputFile[outFileStrLen];
+    strcat(outputFile, outputFilePath);
     strcat(outputFile, "/");
     strcat(outputFile, outputFileName);
+    strcat(outputFile, ".wav");
 
     // Load aff
     FILE* afffp = fopen(affFile, "r");
     size_t mallocSize = 100;
-    void* affContent = malloc(mallocSize);
-    size_t byteCount = fread(affContent, 1, mallocSize, afffp);
+    char* affContent = (char*)malloc(mallocSize);
+    size_t byteCount = fread((void*)affContent, 1, mallocSize, afffp);
     if (byteCount == 0) {
-        printf("Empty file.");
+        printf("Empty file.\n");
         return 1;
     }
     while (byteCount == mallocSize) { // File not done reading
         rewind(afffp);
         free(affContent);
         mallocSize += 100;
-        affContent = malloc(mallocSize);
-        byteCount = fread(affContent, 1, mallocSize, afffp);
+        affContent = (char*)malloc(mallocSize);
+        byteCount = fread((void*)affContent, 1, mallocSize, afffp);
     }
     fclose(afffp);
 
@@ -234,11 +231,20 @@ int main(int argc, char* argv[]) {
     free(affContent);
 
     // Mix keysound
-    char* keysoundData = mixKeysound(mixerData, mixerDataLength);
+    size_t keysoundDataLength = 0;
+    size_t* keysoundDataLength_ptr = &keysoundDataLength;
+    unsigned char* keysoundData = mixKeysound(mixerData, mixerDataLength, keysoundDataLength_ptr);
+    free(mixerData);
 
     // Pack .wav
-    void* wavData = packWav(keysoundData);
+    size_t wavDataLength = 0;
+    size_t* wavDataLength_ptr = &wavDataLength;
+    void* wavData = packWav(keysoundData, keysoundDataLength, wavDataLength_ptr);
+    free(keysoundData);
 
     // Output .wav
-    // TODO
+    FILE* wavfp = fopen(outputFile, "wb");
+    fwrite(wavData, wavDataLength, 1, wavfp);
+    fclose(wavfp);
+    printf("Done.\n");
 }
