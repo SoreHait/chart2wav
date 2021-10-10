@@ -62,7 +62,7 @@ char* getMiddleText(char* text, char* beginWith, char* endWith) {
     return retStr;
 }
 
-MIXERDATA* analyzeAff(const char* affContent, size_t contentLength, size_t* output_mixerDataLength) {
+MIXERDATA* analyzeAff(char* affContent, size_t contentLength, size_t* output_mixerDataLength) {
     // Get number of lines and max char count of all lines
     // Q: why initial value of lineCount is 1? A: number of '\n's is always lineCount - 1.
     int lineCount = 1, maxCharCount = 0, charCount = 0;
@@ -82,7 +82,14 @@ MIXERDATA* analyzeAff(const char* affContent, size_t contentLength, size_t* outp
     char lineContent[lineCount][maxCharCount];
 
     // Split each line and store
-    //TODO
+    char* token;
+    int lineIndex = 0;
+    token = strtok(affContent, "\n");
+    while (token != NULL) {
+        strcpy(lineContent[lineIndex], token);
+        lineIndex++;
+        token = strtok(NULL, "\n");
+    }
 
     // Extract objects
     MIXERDATA* mixerDataTmp = (MIXERDATA*)malloc(sizeof(MIXERDATA) * lineCount * 2); // maybe long enough
@@ -97,7 +104,7 @@ MIXERDATA* analyzeAff(const char* affContent, size_t contentLength, size_t* outp
             }
             if (strstr(currentLine, "arctap") != NULL) { // is arctap
                 char* arctapStr = getMiddleText(currentLine, "[", "]");
-                char* token = strtok(arctapStr, ",");
+                token = strtok(arctapStr, ",");
                 while (token != NULL) {
                     (mixerDataTmp + *output_mixerDataLength) -> timing = strtol(getMiddleText(token, "(", ")"), NULL, 10);
                     (mixerDataTmp + *output_mixerDataLength) -> type = 1;
@@ -142,8 +149,7 @@ unsigned char* mixKeysound(MIXERDATA* mixerData, size_t mixerDataLength, size_t*
     printf("Sample Count: %d.\n", mixSampleCount);
 
     // Mix keysound
-    short mixBuffer[mixSampleCount];
-    memset(mixBuffer, 0, sizeof(short) * mixSampleCount);
+    short* mixBuffer = (short*)calloc(mixSampleCount, sizeof(short));
     for (int i = 0; i < mixerDataLength; i++) {
         MIXERDATA currentMixerData = mixerData[i];
         int mixSamplePos = (int)((double)(currentMixerData.timing) * 44.1);
@@ -217,9 +223,8 @@ int main(int argc, char* argv[]) {
     }
     while (byteCount == mallocSize) { // File not done reading
         rewind(afffp);
-        free(affContent);
         mallocSize += 100;
-        affContent = (char*)malloc(mallocSize);
+        affContent = (char*)realloc((void*)affContent, mallocSize);
         byteCount = fread((void*)affContent, 1, mallocSize, afffp);
     }
     fclose(afffp);
