@@ -168,6 +168,7 @@ unsigned char* mixKeysound(MIXERDATA* mixerData, size_t mixerDataLength, size_t*
     *output_keysoundDataLength = mixSampleCount * 2;
     unsigned char* outputBuffer = (unsigned char*)malloc(*output_keysoundDataLength);
     memcpy(outputBuffer, mixBuffer, *output_keysoundDataLength);
+    free(mixBuffer);
     return outputBuffer;
 }
 
@@ -250,6 +251,7 @@ int main(int argc, char* argv[]) {
     // Output .wav
     FILE* wavfp = fopen(outputFile, "wb");
     fwrite(wavData, wavDataLength, 1, wavfp);
+    free(wavData);
     fclose(wavfp);
     printf("Done.\n");
 }
