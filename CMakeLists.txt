@@ -7,4 +7,6 @@ include_directories(src)
 
 add_executable(aff2wav_c
         src/main.c
-        src/main.h)
+        src/main.h
+        src/osu.c
+        src/audiodata.h)

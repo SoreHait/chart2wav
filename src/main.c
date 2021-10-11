@@ -1,9 +1,11 @@
 #define _CRT_SECURE_NO_WARNINGS
+#define MAIN_C
 #include "main.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
+#define ARC 616
+#define OSU 20
 
 short validateShort(short x, short y) {
     int sum = x + y;
@@ -197,6 +199,9 @@ void* packWav(unsigned char* keysoundData, size_t keysoundDataLength, size_t* ou
 }
 
 int main(int argc, char* argv[]) {
+    int generate_type;
+    MIXERDATA *mixerData;
+    size_t mixerDataLength = 0;
     // Check argc
     if (argc < 3) {
         printf("Not enough args.\n");
@@ -206,8 +211,17 @@ int main(int argc, char* argv[]) {
     // Validate .aff
     char* affFile = argv[1];
     if (strstr(affFile, ".aff") == NULL || strcmp(strstr(affFile, ".aff"), ".aff") != 0) {
-        printf("Not aff file.\n");
-        return 1;
+        if (strstr(affFile, ".osu") == NULL || strcmp(strstr(affFile, ".osu"), ".osu") != 0){
+            printf("Not aff or osu file.\n");
+            return 1;
+        }
+        else{
+            generate_type = OSU;
+        }
+
+    }
+    else{
+        generate_type = ARC;
     }
 
     // Generate output path
@@ -233,11 +247,22 @@ int main(int argc, char* argv[]) {
     fclose(afffp);
     memset((char*)affContent + byteCount, '\0', mallocSize - byteCount);
 
-    // Analyze aff
-    size_t mixerDataLength = 0;
-    size_t* mixerDataLength_ptr = &mixerDataLength;
-    MIXERDATA* mixerData = analyzeAff(affContent, byteCount, mixerDataLength_ptr);
-    free(affContent);
+    if (generate_type == ARC){
+        // Analyze aff
+        size_t* mixerDataLength_ptr = &mixerDataLength;
+        mixerData = analyzeAff(affContent, byteCount, mixerDataLength_ptr);
+        free(affContent);
+    }
+    else if (generate_type == OSU){
+        // Analyze OSU
+        size_t* mixerDataLength_ptr = &mixerDataLength;
+        mixerData = analyzeOSU(affContent, byteCount, mixerDataLength_ptr);
+        free(affContent);
+    }
+    else{
+        return 1;
+    }
+
 
     // Mix keysound
     size_t keysoundDataLength = 0;
