@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include <libgen.h>
 
 
 short validateShort(short x, short y) {
@@ -197,20 +196,14 @@ int main(int argc, char* argv[]) {
 
     // Validate .aff
     char* affFile = argv[1];
-    char* affFileName = basename(affFile);
-    if (strstr(affFileName, ".aff") == NULL || strcmp(strstr(affFileName, ".aff"), ".aff") != 0) {
+    if (strstr(affFile, ".aff") == NULL || strcmp(strstr(affFile, ".aff"), ".aff") != 0) {
         printf("Not aff file.\n");
         return 1;
     }
 
     // Generate output path
-    char* outputFilePath = dirname(affFile);
-    char* outputFileName = argv[2];
-    size_t outFileStrLen = strlen(outputFilePath) + strlen(outputFileName) + 2; //+2 for '\0' and '/'
-    char outputFile[outFileStrLen];
-    strcat(outputFile, outputFilePath);
-    strcat(outputFile, "/");
-    strcat(outputFile, outputFileName);
+    char outputFile[strlen(argv[2]) + 5];
+    strcpy(outputFile, argv[2]);
     strcat(outputFile, ".wav");
 
     // Load aff
