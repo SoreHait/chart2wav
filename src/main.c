@@ -227,6 +227,7 @@ int main(int argc, char* argv[]) {
         byteCount = fread((void*)affContent, 1, mallocSize, afffp);
     }
     fclose(afffp);
+    memset((char*)affContent + byteCount, '\0', mallocSize - byteCount);
 
     // Analyze aff
     size_t mixerDataLength = 0;
