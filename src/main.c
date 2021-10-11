@@ -56,9 +56,10 @@ char* getMiddleText(char* text, char* beginWith, char* endWith) {
     size_t beginLength = strlen(beginWith);
     l_pos = strstr(text, beginWith) + beginLength;
     r_pos = strstr(text, endWith);
+    *r_pos = '\0'; // Mark end
     long long len = r_pos - l_pos;
     char* retStr = (char*)malloc(len + 1); // Space for tailing '\0'
-    strncpy(retStr, l_pos, len);
+    strcpy(retStr, l_pos);
     return retStr;
 }
 
@@ -79,7 +80,6 @@ MIXERDATA* analyzeAff(char* affContent, size_t contentLength, size_t* output_mix
     }
 
     // Declare a char array to store each line
-    // char lineContent[lineCount][maxCharCount];
     char** lineContent = (char**)malloc(sizeof(char*) * lineCount);
     for (int i = 0; i < lineCount; i++) {
         lineContent[i] = (char*)malloc(sizeof(char) * maxCharCount);
@@ -131,6 +131,10 @@ MIXERDATA* analyzeAff(char* affContent, size_t contentLength, size_t* output_mix
     MIXERDATA* mixerData = (MIXERDATA*)malloc(sizeof(MIXERDATA) * *output_mixerDataLength);
     memcpy(mixerData, mixerDataTmp, sizeof(MIXERDATA) * *output_mixerDataLength);
     free(mixerDataTmp);
+    for (int i = 0; i < lineCount; i++) {
+        free(lineContent[i]);
+    }
+    free(lineContent);
     return mixerData;
 }
 
@@ -252,5 +256,6 @@ int main(int argc, char* argv[]) {
     fwrite(wavData, wavDataLength, 1, wavfp);
     free(wavData);
     fclose(wavfp);
+    free(outputFile);
     printf("Done.\n");
 }
