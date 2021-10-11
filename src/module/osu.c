@@ -1,22 +1,6 @@
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "main.h"
-
-
-char* splittext(char* text, char* split, int retcount){
-    char* pt = NULL;
-    int count = 0;
-    pt = strtok(text, split);
-    while (pt != NULL){
-        if (count == retcount){
-            return (pt);
-        }
-        pt = strtok(NULL, split);
-        count++;
-    }
-    return NULL;
-}
+#include "../util/declare.h"
 
 MIXERDATA* analyzeOSU(char* affContent, size_t contentLength, size_t* output_mixerDataLength) {
     // Get number of lines and max char count of all lines
