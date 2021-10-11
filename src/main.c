@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "main.h"
 #include <stdio.h>
 #include <string.h>
@@ -78,7 +79,11 @@ MIXERDATA* analyzeAff(char* affContent, size_t contentLength, size_t* output_mix
     }
 
     // Declare a char array to store each line
-    char lineContent[lineCount][maxCharCount];
+    // char lineContent[lineCount][maxCharCount];
+    char** lineContent = (char**)malloc(sizeof(char*) * lineCount);
+    for (int i = 0; i < lineCount; i++) {
+        lineContent[i] = (char*)malloc(sizeof(char) * maxCharCount);
+    }
 
     // Split each line and store
     char* token;
@@ -172,8 +177,8 @@ unsigned char* mixKeysound(MIXERDATA* mixerData, size_t mixerDataLength, size_t*
 }
 
 void* packWav(unsigned char* keysoundData, size_t keysoundDataLength, size_t* output_wavDataLength) {
-    unsigned char wavHeader[WAVHEADER_LEN];
-    memcpy(wavHeader, WAVHEADER, WAVHEADER_LEN);
+    unsigned char wavHeader[44];
+    memcpy(wavHeader, WAVHEADER, 44);
     *output_wavDataLength = keysoundDataLength + 36;
 
     for (int i = 0; i < 4; i++) {
@@ -181,9 +186,9 @@ void* packWav(unsigned char* keysoundData, size_t keysoundDataLength, size_t* ou
         wavHeader[i + 40] = (unsigned char)(((keysoundDataLength) >> (i * 8)) & 0xFF);
     }
 
-    void* output_wav = malloc(WAVHEADER_LEN + keysoundDataLength);
-    memcpy(output_wav, wavHeader, WAVHEADER_LEN);
-    memcpy(output_wav + WAVHEADER_LEN, keysoundData, keysoundDataLength);
+    void* output_wav = malloc(44 + keysoundDataLength);
+    memcpy(output_wav, wavHeader, 44);
+    memcpy((char*)(output_wav) + 44, keysoundData, keysoundDataLength);
     return output_wav;
 }
 
@@ -202,7 +207,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Generate output path
-    char outputFile[strlen(argv[2]) + 5];
+    char* outputFile = (char*)malloc(strlen(argv[2]) + 5);
     strcpy(outputFile, argv[2]);
     strcat(outputFile, ".wav");
 
