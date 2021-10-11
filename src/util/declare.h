@@ -19,7 +19,7 @@ const unsigned char* getData(int dataType);
 int getDataLen(int dataType);
 int getTiming(const void* a, const void* b);
 char* getMiddleText(char* text, char* beginWith, char* endWith);
-unsigned char* mixKeysound(MIXERDATA* mixerData, size_t mixerDataLength, size_t* output_keysoundDataLength);
+unsigned char* mixKeysound(MIXERDATA* mixerData, size_t mixerDataLength, size_t* output_keysoundDataLength, int offset);
 void* packWav(unsigned char* keysoundData, size_t keysoundDataLength, size_t* output_wavDataLength);
 char* splittext(char* text, char* split, int retcount);
 

@@ -53,11 +53,14 @@ int main(int argc, char* argv[]) {
     size_t mixerDataLength = 0;
     size_t* mixerDataLength_ptr = &mixerDataLength;
     MIXERDATA* (*analyzer)(char*, size_t, size_t*);
+    int offset;
     if (generate_type == ARC) {
         analyzer = analyzeAff;
+        offset = (int)strtol(fileContent + 12, NULL, 10); // +12 for "AudioOffset:"
     }
     else if (generate_type == OSU) {
         analyzer = analyzeOSU;
+        offset = 0;
     }
     else {
         return 1;
@@ -68,7 +71,7 @@ int main(int argc, char* argv[]) {
     // Mix keysound
     size_t keysoundDataLength = 0;
     size_t* keysoundDataLength_ptr = &keysoundDataLength;
-    unsigned char* keysoundData = mixKeysound(mixerData, mixerDataLength, keysoundDataLength_ptr);
+    unsigned char* keysoundData = mixKeysound(mixerData, mixerDataLength, keysoundDataLength_ptr, offset);
     free(mixerData);
 
     // Pack .wav
