@@ -74,16 +74,15 @@ char* splittext(char* text, char* split, int retcount) {
     return NULL;
 }
 
-unsigned char* mixKeysound(MIXERDATA* mixerData, size_t mixerDataLength, size_t* output_keysoundDataLength) {
+unsigned char* mixKeysound(MIXERDATA* mixerData, size_t mixerDataLength, size_t* output_keysoundDataLength, int offset) {
     float mixTimeLen;
     if (mixerDataLength == 0) {
         mixTimeLen = 0;
     }
     else {
         qsort(mixerData, mixerDataLength, sizeof(MIXERDATA), getTiming);
-        long min = mixerData[0].timing;
         for (int i = 0; i < mixerDataLength; i++) {
-            mixerData[i].timing -= min;
+            mixerData[i].timing += offset;
         }
         mixTimeLen = (float)(mixerData[mixerDataLength - 1].timing) / 1000 + bits2time(getDataLen(mixerData[mixerDataLength - 1].type));
     }
