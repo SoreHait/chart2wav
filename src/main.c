@@ -87,4 +87,5 @@ int main(int argc, char* argv[]) {
     fclose(wavfp);
     free(outputFile);
     printf("Done.\n");
+    return 0;
 }

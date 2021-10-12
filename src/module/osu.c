@@ -36,28 +36,23 @@ MIXERDATA* analyzeOSU(char* affContent, size_t contentLength, size_t* output_mix
     }
 
     // Extract objects
-    MIXERDATA* mixerDataTmp = (MIXERDATA*)malloc(sizeof(MIXERDATA) * lineCount * 2); // maybe long enough
+    MIXERDATA* mixerDataTmp = (MIXERDATA*)malloc(sizeof(MIXERDATA) * lineCount); // maybe long enough
     *output_mixerDataLength = 0;
     for (int i = 0; i < lineCount; i++) {
         char* currentLine = lineContent[i];
-        if (strncmp(currentLine, "[HitObjects]", 12) == 0){  // HitObjects Begins
+        if (strncmp(currentLine, "[HitObjects]", 12) == 0) {  // HitObjects Begins
             is_begins = 1;
             continue;
         }
 
-        if(is_begins){
-            if (1) { // Normal TAP
-                (mixerDataTmp + *output_mixerDataLength) -> timing = strtol(splittext(currentLine, ",", 2), NULL, 10);
-                (mixerDataTmp + *output_mixerDataLength) -> type = 0;
-                (*output_mixerDataLength)++;
+        if (is_begins) {
+            if (strlen(currentLine) == 0) {
+                break;
             }
-
-            if (strncmp(currentLine, "\n", 1) == 0){
-                is_begins = 0;
-            }
-
+            (mixerDataTmp + *output_mixerDataLength) -> timing = strtol(splittext(currentLine, ",", 2), NULL, 10);
+            (mixerDataTmp + *output_mixerDataLength) -> type = 0;
+            (*output_mixerDataLength)++;
         }
-
     }
     MIXERDATA* mixerData = (MIXERDATA*)malloc(sizeof(MIXERDATA) * *output_mixerDataLength);
     memcpy(mixerData, mixerDataTmp, sizeof(MIXERDATA) * *output_mixerDataLength);
