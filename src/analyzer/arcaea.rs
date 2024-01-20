@@ -1,10 +1,10 @@
 use crate::util::helper;
 use crate::util::types::MixerData;
 
-pub fn analyze(aff_content: &String) -> Vec<MixerData> {
+pub fn analyze(content: &String) -> (i32, Vec<MixerData>) {
     let mut mixer_data: Vec<MixerData> = vec![];
-    let lines = aff_content.split_terminator("\n");
-    for line in lines {
+    let mut offset: i32 = 0;
+    for line in content.lines() {
         if line.starts_with("arc") {
             if line.find("false") != None && line.find("arctap") == None {
                 mixer_data.push(MixerData {
@@ -34,12 +34,12 @@ pub fn analyze(aff_content: &String) -> Vec<MixerData> {
             })
         } else if line.starts_with("(") {
             mixer_data.push(MixerData {
-                timing: helper::get_str_in_between(line, "(", ",")
-                    .parse()
-                    .unwrap(),
+                timing: helper::get_str_in_between(line, "(", ",").parse().unwrap(),
                 _type: 0,
             })
+        } else if line.starts_with("AudioOffset:") {
+            offset = line.strip_prefix("AudioOffset:").unwrap().parse().unwrap();
         }
     }
-    return mixer_data;
+    return (offset, mixer_data);
 }

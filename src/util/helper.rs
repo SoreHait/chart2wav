@@ -16,7 +16,7 @@ fn make_word(low: u8, high: u8) -> i16 {
     return ((high as i16) << 8) + low as i16;
 }
 
-fn bit_to_time(bit_count: i32) -> f32 {
+fn bit_to_time(bit_count: usize) -> f32 {
     return (bit_count as f32) / 88200.0;
 }
 
@@ -28,7 +28,7 @@ fn get_data<'a>(data_type: i8) -> &'a [u8] {
     };
 }
 
-fn get_data_len(data_type: i8) -> i32 {
+fn get_data_len(data_type: i8) -> usize {
     return if data_type == 1 {
         constants::ARC_AUDIO_LEN
     } else {
@@ -56,12 +56,12 @@ pub fn mix_hit_sound(mixer_data: &mut Vec<types::MixerData>, offset: i32) -> Vec
     }
     println!("Audio Time: {mix_time_len} sec.");
 
-    let sample_count = mix_time_len as i32 * 44100;
+    let sample_count = mix_time_len as usize * 44100;
     println!("Sample Count: {sample_count}.");
 
-    let mix_buffer: Vec<i8> = vec![0; sample_count as usize];
+    let mut mix_buffer: Vec<u8> = vec![0; sample_count * 2];
     for data in mixer_data {
-        let mut mix_sample_pos = (data.timing as f32 * 44.1) as i32;
+        let mut mix_sample_pos = (data.timing as f32 * 44.1) as usize;
         let data_len = get_data_len(data._type);
         let sound = get_data(data._type);
         for i in (0..data_len).step_by(2) {
@@ -69,9 +69,26 @@ pub fn mix_hit_sound(mixer_data: &mut Vec<types::MixerData>, offset: i32) -> Vec
             if mix_sample_pos >= sample_count {
                 break;
             }
-            mix_buffer[mix_sample_pos] = validate_short(mix_buffer[mix_sample_pos], )
+            let tmp = validate_short(
+                make_word(mix_buffer[mix_sample_pos * 2], mix_buffer[mix_sample_pos * 2 + 1]),
+                make_word(sound[i], sound[i + 1]),
+            );
+            mix_buffer[mix_sample_pos * 2] = tmp as u8;
+            mix_buffer[mix_sample_pos * 2 + 1] = (tmp >> 8) as u8;
         }
     }
+    return mix_buffer;
+}
 
-    return vec![];
+pub fn pack_wav(hit_sound_data: &mut Vec<u8>) -> Vec<u8> {
+    let mut wav_data: Vec<u8> = Vec::from(constants::WAV_HEADER);
+    let output_data_len = hit_sound_data.len() + 36;
+
+    for i in 0..4 {
+        wav_data[i + 4] = ((output_data_len >> (i * 8)) & 0xFF) as u8;
+        wav_data[i + 40] = ((hit_sound_data.len() >> (i * 8)) & 0xFF) as u8;
+    }
+
+    wav_data.append(hit_sound_data);
+    return wav_data
 }

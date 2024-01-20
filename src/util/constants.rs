@@ -1,5 +1,5 @@
-pub const ARC_AUDIO_LEN: i32 = 28350;
-pub const TAP_AUDIO_LEN: i32 = 28424;
+pub const ARC_AUDIO_LEN: usize = 28350;
+pub const TAP_AUDIO_LEN: usize = 28424;
 
 pub const WAV_HEADER: [u8; 44] = [
     82, 73, 70, 70, // RIFF
