@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/aff2wav-rs.iml" filepath="$PROJECT_DIR$/.idea/aff2wav-rs.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/chart2wav.iml" filepath="$PROJECT_DIR$/.idea/chart2wav.iml" />
     </modules>
   </component>
 </project>

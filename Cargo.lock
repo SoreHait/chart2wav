@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "aff2wav-rs"
+name = "chart2wav"
 version = "0.1.0"
