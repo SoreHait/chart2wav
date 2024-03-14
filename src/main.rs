@@ -1,13 +1,20 @@
 mod util;
 mod analyzer;
 
+use std::collections::HashMap;
 use std::process::ExitCode;
 use std::fs::File;
 use std::io::{Read, Write};
 use util::helper;
-use util::types;
+use util::types::Analyzer;
+use crate::analyzer::{arcaea, osu};
 
 fn main() -> ExitCode {
+    let extension_names: HashMap<&str, Analyzer> = HashMap::from([
+        ("aff", arcaea::analyze as Analyzer),
+        ("osu", osu::analyze as Analyzer),
+    ]);
+
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 3 {
         println!("Not enough args.");
@@ -15,13 +22,20 @@ fn main() -> ExitCode {
     }
 
     let in_name = args.get(1).unwrap();
-    let analyze: fn(&String) -> (i32, Vec<types::MixerData>);
-    if in_name.ends_with(".aff") {
-        analyze = analyzer::arcaea::analyze;
-    } else if in_name.ends_with(".osu") {
-        analyze = analyzer::osu::analyze;
+    let in_name_ext: &str;
+    if let Some(ext) = in_name.rsplit_once('.') {
+        in_name_ext = ext.1;
     } else {
-        println!("Unknown file type.");
+        println!("Could not determine extension name.");
+        return ExitCode::from(1);
+    }
+
+    let analyze: &Analyzer;
+    if let Some(analyzer) = extension_names.get(in_name_ext) {
+        analyze = analyzer;
+        println!("Matched analyzer for ext name: {in_name_ext}.");
+    } else {
+        println!("Could not match analyzer for ext name: {in_name_ext}.");
         return ExitCode::from(1);
     }
 
@@ -37,7 +51,8 @@ fn main() -> ExitCode {
     let mut hit_sound_data = helper::mix_hit_sound(&mut mixer_data, offset);
     let wav_packed_data = helper::pack_wav(&mut hit_sound_data);
 
-    let mut wav_fp = File::create(out_name).unwrap();
+    let mut wav_fp = File::create(out_name.clone()).unwrap();
     wav_fp.write_all(wav_packed_data.as_slice()).unwrap();
+    println!("Audio file output to {out_name}.");
     return ExitCode::from(0);
 }
