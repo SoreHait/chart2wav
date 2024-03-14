@@ -1,58 +1,102 @@
 mod util;
 mod analyzer;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::process::ExitCode;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Read;
 use util::helper;
-use util::types::Analyzer;
-use crate::analyzer::{arcaea, osu};
+use analyzer::{arcaea, osu};
+use util::traits::Analyzer;
+use wav;
 
 fn main() -> ExitCode {
-    let extension_names: HashMap<&str, Analyzer> = HashMap::from([
-        ("aff", arcaea::analyze as Analyzer),
-        ("osu", osu::analyze as Analyzer),
+    let extension_names: HashMap<&str, Box<dyn Analyzer>> = HashMap::from([
+        ("aff", Box::new(arcaea::Arcaea) as Box<dyn Analyzer>),
+        ("osu", Box::new(osu::Osu) as Box<dyn Analyzer>),
     ]);
 
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() < 3 {
-        println!("Not enough args.");
+    let mut args: VecDeque<String> = std::env::args().collect();
+    args.pop_front(); // Deposit command itself
+    let in_name: String;
+    if let Some(i) = args.pop_front() {
+        in_name = i;
+    } else {
+        println!("Could not find chart file name.");
         return ExitCode::from(1);
     }
-
-    let in_name = args.get(1).unwrap();
     let in_name_ext: &str;
     if let Some(ext) = in_name.rsplit_once('.') {
         in_name_ext = ext.1;
     } else {
-        println!("Could not determine extension name.");
+        println!("Could not determine chart extension name.");
         return ExitCode::from(1);
     }
 
-    let analyze: &Analyzer;
-    if let Some(analyzer) = extension_names.get(in_name_ext) {
-        analyze = analyzer;
+    let analyzer: &Box<dyn Analyzer>;
+    if let Some(i) = extension_names.get(in_name_ext) {
+        analyzer = i;
         println!("Matched analyzer for ext name: {in_name_ext}.");
     } else {
         println!("Could not match analyzer for ext name: {in_name_ext}.");
         return ExitCode::from(1);
     }
 
-    let mut out_name = String::from(args.get(2).unwrap());
+    analyzer.print_help_msg();
+
+    let mut out_name: String;
+    if let Some(i) = args.pop_front() {
+        out_name = i;
+    } else {
+        println!("Could not find output path.");
+        return ExitCode::from(1);
+    }
     if !out_name.ends_with(".wav") {
         out_name.push_str(".wav");
+    }
+
+    let hitsound_count = analyzer.get_hitsound_count();
+    let hs_len = args.len();
+    if hs_len < hitsound_count as usize {
+        println!("Hitsound count ({hs_len}) not enough for this type of chart ({hitsound_count}).");
+        return ExitCode::from(1);
+    }
+
+    let hitsound: Vec<Vec<u8>>;
+    for hs_name in args[0..hitsound_count] {
+        let mut wav_file;
+        if let Ok(i) = File::open(hs_name) {
+            wav_file = i;
+        } else {
+            println!("Wav open failed ({hs_name}).");
+            return ExitCode::from(1);
+        }
+        if let Ok((h, d)) = wav::read(&mut wav_file) {
+            if h.audio_format != wav::WAV_FORMAT_PCM ||
+                h.channel_count != 1 ||
+                h.sampling_rate != 44100 ||
+                h.bits_per_sample != 16 {
+                println!("Wav format needs to be PCM, mono, 44.1kHz, 16bit ({hs_name}).");
+                return ExitCode::from(1);
+            }
+
+        } else {
+            println!("Wav read failed ({hs_name}), check https://docs.rs/wav/latest/wav/fn.read.html");
+            return ExitCode::from(1);
+        }
     }
 
     let mut file = File::open(in_name).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();
     let (offset, mut mixer_data) = analyze(&content);
-    let mut hit_sound_data = helper::mix_hit_sound(&mut mixer_data, offset);
-    let wav_packed_data = helper::pack_wav(&mut hit_sound_data);
+    let hit_sound_data = helper::mix_hit_sound(&mut mixer_data, offset);
 
     let mut wav_fp = File::create(out_name.clone()).unwrap();
-    wav_fp.write_all(wav_packed_data.as_slice()).unwrap();
+    let header = wav::Header::new(
+        wav::WAV_FORMAT_PCM, 1, 44100, 16
+    );
+    wav::write(header, &wav::BitDepth::from(hit_sound_data), &mut wav_fp).expect("");
     println!("Audio file output to {out_name}.");
     return ExitCode::from(0);
 }
