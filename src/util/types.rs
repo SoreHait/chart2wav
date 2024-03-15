@@ -1,4 +1,4 @@
 pub struct MixerData {
-    pub timing: i32,
-    pub hs_type: i8
+    pub timing: u32,
+    pub hs_type: u8
 }

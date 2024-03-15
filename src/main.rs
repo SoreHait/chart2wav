@@ -62,10 +62,11 @@ fn main() -> ExitCode {
         return ExitCode::from(1);
     }
 
-    let hitsound: Vec<Vec<u8>>;
-    for hs_name in args[0..hitsound_count] {
+    let mut hitsound: Vec<Vec<i16>> = vec![];
+    for i in 0..hitsound_count {
+        let hs_name = args[i as usize].clone();
         let mut wav_file;
-        if let Ok(i) = File::open(hs_name) {
+        if let Ok(i) = File::open(hs_name.clone()) {
             wav_file = i;
         } else {
             println!("Wav open failed ({hs_name}).");
@@ -79,7 +80,7 @@ fn main() -> ExitCode {
                 println!("Wav format needs to be PCM, mono, 44.1kHz, 16bit ({hs_name}).");
                 return ExitCode::from(1);
             }
-
+            hitsound.push(d.as_sixteen().unwrap().to_vec());
         } else {
             println!("Wav read failed ({hs_name}), check https://docs.rs/wav/latest/wav/fn.read.html");
             return ExitCode::from(1);
@@ -89,8 +90,8 @@ fn main() -> ExitCode {
     let mut file = File::open(in_name).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();
-    let (offset, mut mixer_data) = analyze(&content);
-    let hit_sound_data = helper::mix_hit_sound(&mut mixer_data, offset);
+    let mut mixer_data = analyzer.analyze(&content);
+    let hit_sound_data = helper::mix_hit_sound(&mut mixer_data, &hitsound);
 
     let mut wav_fp = File::create(out_name.clone()).unwrap();
     let header = wav::Header::new(
