@@ -7,7 +7,7 @@ pub struct Arcaea;
 impl traits::Analyzer for Arcaea {
     fn get_hitsound_count(&self) -> i32 { 2 }
     fn print_help_msg(&self) { println!("Hitsound 0: TAP; Hitsound 1: ARC.") }
-    fn analyze(&self, content: &String) -> (i32, Vec<MixerData>) {
+    fn analyze(&self, content: &String) -> Vec<MixerData> {
         let mut mixer_data: Vec<MixerData> = vec![];
         let mut offset: i32 = 0;
         for line in content.lines() {
@@ -15,8 +15,7 @@ impl traits::Analyzer for Arcaea {
                 if line.find("false") != None && line.find("arctap") == None {
                     mixer_data.push(MixerData {
                         timing: helper::get_str_in_between(line, "arc(", ",")
-                            .parse()
-                            .unwrap(),
+                            .parse::<u32>().unwrap() + offset as u32,
                         hs_type: 1,
                     })
                 }
@@ -25,8 +24,7 @@ impl traits::Analyzer for Arcaea {
                     for arctap in arctap_str.split_terminator(",") {
                         mixer_data.push(MixerData {
                             timing: helper::get_str_in_between(arctap, "(", ")")
-                                .parse()
-                                .unwrap(),
+                                .parse::<u32>().unwrap() + offset as u32,
                             hs_type: 1,
                         })
                     }
@@ -34,19 +32,19 @@ impl traits::Analyzer for Arcaea {
             } else if line.starts_with("hold") {
                 mixer_data.push(MixerData {
                     timing: helper::get_str_in_between(line, "hold(", ",")
-                        .parse()
-                        .unwrap(),
+                        .parse::<u32>().unwrap() + offset as u32,
                     hs_type: 0,
                 })
             } else if line.starts_with("(") {
                 mixer_data.push(MixerData {
-                    timing: helper::get_str_in_between(line, "(", ",").parse().unwrap(),
+                    timing: helper::get_str_in_between(line, "(", ",")
+                        .parse::<u32>().unwrap() + offset as u32,
                     hs_type: 0,
                 })
             } else if line.starts_with("AudioOffset:") {
                 offset = line.strip_prefix("AudioOffset:").unwrap().parse().unwrap();
             }
         }
-        return (offset, mixer_data);
+        return mixer_data;
     }
 }
